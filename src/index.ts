@@ -54,29 +54,29 @@ export const execute = async (message: CloudStorageFile, context: Context) => {
 
   const fileName = message.name;
 
-  // if (!fs.existsSync(`/tmp/${bucketDirectoryName}`)) {
-  //   await fsp.mkdir(`/tmp/${bucketDirectoryName}`)
-  // }
+  if (!fs.existsSync(`/tmp/${bucketDirectoryName}`)) {
+    await fsp.mkdir(`/tmp/${bucketDirectoryName}`)
+  }
 
-  // const file = imageBucket.file(fileName);
-  // if (!(await file.exists())) {
-  //   console.warn('File is not exists');
-  //   return;
-  // }
+  const file = imageBucket.file(fileName);
+  if (!(await file.exists())) {
+    console.warn('File is not exists');
+    return;
+  }
   const filePath = `/tmp/${fileName}`;
-  // console.log(`Downloading: ${file.name}`);
-  // const [contents] = await file.download({
-  //   destination: filePath,
-  // });
+  console.log(`Downloading: ${file.name}`);
+  const [contents] = await file.download({
+    destination: filePath,
+  });
 
-  // console.log(`File exists: ${fs.existsSync(filePath)}`);
+  console.log(`File exists: ${fs.existsSync(filePath)}`);
 
   console.log('Uploading S3');
   await uploadToS3(filePath);
   console.log('Uploaded S3');
 
   console.log(`Deleting: ${fileName}`);
-  // await fsp.rm(filePath);
+  await fsp.rm(filePath);
   console.log(`Deleted: ${fileName}`);
   console.log(`File exists: ${fs.existsSync(filePath)}`);
 
