@@ -1,16 +1,26 @@
-import { ListBucketsCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import type { Context, EventFunction, HttpFunction } from '@google-cloud/functions-framework/build/src/functions';
-import { PubsubMessage } from "@google-cloud/pubsub/build/src/publisher";
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import type { Context } from '@google-cloud/functions-framework/build/src/functions';
 import { Storage } from '@google-cloud/storage';
 import * as fs from 'fs';
 import path = require('path');
-import { Stream } from 'stream';
-
 import * as dotenv from 'dotenv';
 
-dotenv.config();
+if (process.env.ENVIRONMENT != 'production') {
+  dotenv.config();
+}
 
 const fsp = fs.promises;
+
+// configure GCP
+const BucketName = process.env.GCS_BUCKET!;
+const bucketDirectoryName = 'exported';
+const gcs = new Storage({
+  keyFilename: './key.json',
+});
+const imageBucket = gcs.bucket(BucketName);
+
+
+// configure aws
 const s3Params = {
   region: 'us-west-2',
   credentials: {
@@ -18,14 +28,8 @@ const s3Params = {
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   }
 };
+const s3bucketName = process.env.AWS_BUCKET!;
 const s3 = new S3Client(s3Params);
-
-const BucketName = process.env.GCS_BUCKET!;
-const bucketDirectoryName = 'exported';
-const gcs = new Storage({
-  keyFilename: './key.json',
-});
-const imageBucket = gcs.bucket(BucketName);
 
 type CloudStorageFile = {
   kind: string,           // "storage#object",
@@ -71,9 +75,7 @@ export const execute = async (message: CloudStorageFile, context: Context) => {
 
   console.log(`File exists: ${fs.existsSync(filePath)}`);
 
-  console.log('Uploading S3');
   await uploadToS3(filePath);
-  console.log('Uploaded S3');
 
   console.log(`Deleting: ${fileName}`);
   await fsp.rm(filePath);
@@ -88,17 +90,17 @@ export const execute = async (message: CloudStorageFile, context: Context) => {
 async function uploadToS3(filePath: string): Promise<void> {
 
   try {
+    console.log('Uploading S3');
+
     const stream = fs.createReadStream(filePath);
     const command = new PutObjectCommand({
-      // Bucket: 'glue-test-deto-20220213',
-      Bucket: 'test-kato-bucket',
+      Bucket: s3bucketName,
       Key: path.basename(filePath),
       Body: stream,
     });
-    console.log(JSON.stringify(s3Params));
     const response = await s3.send(command);
-    console.info(`Upload success: ${path.basename(filePath)} \n${JSON.stringify(response)}`);
+    console.info(`Upload S3 success: ${path.basename(filePath)} \n${JSON.stringify(response)}`);
   } catch (e) {
-    console.error("Error", e);
+    console.error(`Upload S3 success: ${JSON.stringify(e)}`);
   }
 } 
